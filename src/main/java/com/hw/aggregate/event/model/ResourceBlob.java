@@ -1,11 +1,10 @@
 package com.hw.aggregate.event.model;
 
 import org.springframework.data.annotation.Id;
-import org.springframework.data.redis.core.RedisHash;
 
 import java.io.Serializable;
 
-@RedisHash("ResourceBlob")
+//@RedisHash("ResourceBlob")
 public class ResourceBlob implements Serializable {
     @Id
     private String resourceId;
