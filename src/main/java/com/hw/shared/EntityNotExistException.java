@@ -1,4 +1,4 @@
-package com.hw.shared.rest.exception;
+package com.hw.shared;
 
 public class EntityNotExistException extends RuntimeException {
 }

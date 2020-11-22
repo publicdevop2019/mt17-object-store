@@ -2,8 +2,8 @@ package com.hw.aggregate.event.model;
 
 import com.hw.aggregate.event.BizEventRepository;
 import com.hw.shared.Auditable;
+import com.hw.shared.EntityNotExistException;
 import com.hw.shared.UserThreadLocal;
-import com.hw.shared.rest.exception.EntityNotExistException;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 
