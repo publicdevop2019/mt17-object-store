@@ -5,10 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hw.aggregate.event.model.BizEvent;
 import com.hw.aggregate.event.representation.AdminBizEventRep;
 import com.hw.shared.cache.CacheCriteria;
+import com.hw.shared.idempotent.AppChangeRecordApplicationService;
+import com.hw.shared.idempotent.command.AppCreateChangeRecordCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.data.mongodb.MongoDbFactory;
+import org.springframework.data.mongodb.MongoTransactionManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
@@ -27,9 +33,15 @@ public class AdminBizEventApplicationService {
     StringRedisTemplate redisTemplate;
     @Autowired
     ObjectMapper om;
+    @Autowired
+    AppChangeRecordApplicationService appChangeRecordApplicationService;
 
-    public void create(String blob, Long id) {
+    @Transactional
+    public void create(String blob, Long id, String changeId) {
         BizEvent.create(id, blob, repository);
+        AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
+        appCreateChangeRecordCommand.setChangeId(changeId);
+        appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
     }
 
     public AdminBizEventRep readById(Long id) {
@@ -54,15 +66,21 @@ public class AdminBizEventApplicationService {
         }
         return new AdminBizEventRep(bizEvent);
     }
-
-    public void update(Long id, String blob) {
+    @Transactional
+    public void update(Long id, String blob, String changeId) {
         cleanUpCache(Collections.singleton(id));
         BizEvent.update(id, blob, repository);
+        AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
+        appCreateChangeRecordCommand.setChangeId(changeId);
+        appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
     }
-
-    public void delete(Long id) {
+    @Transactional
+    public void delete(Long id, String changeId) {
         cleanUpCache(Collections.singleton(id));
         BizEvent.delete(id, repository);
+        AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
+        appCreateChangeRecordCommand.setChangeId(changeId);
+        appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
     }
 
     private String getQueryCacheKey(CacheCriteria cacheCriteria) {

@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import static com.hw.shared.AppConstant.HTTP_HEADER_CHANGE_ID;
+
 @RestController
 @RequestMapping(value = "events/admin", produces = "application/json")
 public class BizEventController {
@@ -13,10 +15,10 @@ public class BizEventController {
     AdminBizEventApplicationService applicationService;
 
     @PostMapping("{id}")
-    public ResponseEntity<Void> create(@RequestHeader("authorization") String authorization, @RequestBody String blob, @PathVariable(name = "id") Long id) {
+    public ResponseEntity<Void> create(@RequestHeader("authorization") String authorization, @RequestBody String blob, @PathVariable(name = "id") Long id, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
-        applicationService.create(blob, id);
+        applicationService.create(blob, id,changeId);
         return ResponseEntity.ok().header("Location", id.toString()).build();
     }
 
@@ -28,18 +30,18 @@ public class BizEventController {
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<?> update(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestBody String blob) {
+    public ResponseEntity<?> update(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestBody String blob, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
-        applicationService.update(id, blob);
+        applicationService.update(id, blob,changeId);
         return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("{id}")
-    public ResponseEntity<?> delete(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id) {
+    public ResponseEntity<?> delete(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
-        applicationService.delete(id);
+        applicationService.delete(id,changeId);
         return ResponseEntity.ok().build();
     }
 }
