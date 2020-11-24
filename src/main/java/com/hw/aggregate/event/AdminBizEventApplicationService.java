@@ -12,9 +12,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.mongodb.MongoDbFactory;
 import org.springframework.data.mongodb.MongoTransactionManager;
+import org.springframework.data.mongodb.SessionSynchronization;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
@@ -35,13 +40,19 @@ public class AdminBizEventApplicationService {
     ObjectMapper om;
     @Autowired
     AppChangeRecordApplicationService appChangeRecordApplicationService;
-
-    @Transactional
+    @Autowired
+    TransactionTemplate transactionTemplate;
     public void create(String blob, Long id, String changeId) {
-        BizEvent.create(id, blob, repository);
-        AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
-        appCreateChangeRecordCommand.setChangeId(changeId);
-        appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
+                BizEvent.create(id, blob, repository);
+                AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
+                appCreateChangeRecordCommand.setChangeId(changeId);
+                appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
+            }
+        });
+        cleanUpCache(Collections.emptySet());
     }
 
     public AdminBizEventRep readById(Long id) {

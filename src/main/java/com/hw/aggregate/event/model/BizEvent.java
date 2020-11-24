@@ -6,16 +6,21 @@ import com.hw.shared.EntityNotExistException;
 import com.hw.shared.UserThreadLocal;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.io.Serializable;
 import java.util.Date;
 import java.util.Optional;
 
 @Data
+@Document
 public class BizEvent extends Auditable implements Serializable {
     @Id
     private Long id;
     private String blob;
+    @Version
+    private Integer version;
 
 
     public BizEvent(Long id, String blob) {
