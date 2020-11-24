@@ -1,5 +1,6 @@
 package com.hw.aggregate.event;
 
+import com.hw.aggregate.event.command.AdminUpdateBizEventCommand;
 import com.hw.shared.ServiceUtility;
 import com.hw.shared.UserThreadLocal;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +31,7 @@ public class BizEventController {
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<?> update(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestBody String blob, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
+    public ResponseEntity<?> update(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestBody AdminUpdateBizEventCommand blob, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
         applicationService.update(id, blob,changeId);

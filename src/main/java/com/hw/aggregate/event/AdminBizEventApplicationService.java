@@ -2,6 +2,7 @@ package com.hw.aggregate.event;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hw.aggregate.event.command.AdminUpdateBizEventCommand;
 import com.hw.aggregate.event.model.BizEvent;
 import com.hw.aggregate.event.representation.AdminBizEventRep;
 import com.hw.shared.cache.CacheCriteria;
@@ -9,15 +10,10 @@ import com.hw.shared.idempotent.AppChangeRecordApplicationService;
 import com.hw.shared.idempotent.command.AppCreateChangeRecordCommand;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.data.mongodb.MongoDbFactory;
-import org.springframework.data.mongodb.MongoTransactionManager;
-import org.springframework.data.mongodb.SessionSynchronization;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.CollectionUtils;
@@ -33,7 +29,7 @@ import static com.hw.shared.AppConstant.CACHE_QUERY_PREFIX;
 @Service
 public class AdminBizEventApplicationService {
     @Autowired
-    BizEventRepository repository;
+    MongoTemplate mongoTemplate;
     @Autowired
     StringRedisTemplate redisTemplate;
     @Autowired
@@ -42,11 +38,12 @@ public class AdminBizEventApplicationService {
     AppChangeRecordApplicationService appChangeRecordApplicationService;
     @Autowired
     TransactionTemplate transactionTemplate;
+
     public void create(String blob, Long id, String changeId) {
         transactionTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
-                BizEvent.create(id, blob, repository);
+                BizEvent.create(id, blob, mongoTemplate);
                 AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
                 appCreateChangeRecordCommand.setChangeId(changeId);
                 appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
@@ -60,7 +57,7 @@ public class AdminBizEventApplicationService {
         String cache = redisTemplate.opsForValue().get(getQueryCacheKey(cacheCriteria));
         BizEvent bizEvent;
         if (cache == null) {
-            bizEvent = BizEvent.readById(id, repository);
+            bizEvent = BizEvent.readById(id, mongoTemplate);
             try {
                 String s = om.writeValueAsString(bizEvent);
                 redisTemplate.opsForValue().set(getQueryCacheKey(cacheCriteria), s);
@@ -72,26 +69,36 @@ public class AdminBizEventApplicationService {
                 bizEvent = om.readValue(cache, BizEvent.class);
             } catch (IOException e) {
                 log.error("error during read from redis cache", e);
-                bizEvent = BizEvent.readById(id, repository);
+                bizEvent = BizEvent.readById(id, mongoTemplate);
             }
         }
         return new AdminBizEventRep(bizEvent);
     }
-    @Transactional
-    public void update(Long id, String blob, String changeId) {
+
+    public void update(Long id, AdminUpdateBizEventCommand blob, String changeId) {
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
+                BizEvent.update(id, blob,mongoTemplate);
+                AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
+                appCreateChangeRecordCommand.setChangeId(changeId);
+                appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
+            }
+        });
         cleanUpCache(Collections.singleton(id));
-        BizEvent.update(id, blob, repository);
-        AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
-        appCreateChangeRecordCommand.setChangeId(changeId);
-        appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
     }
-    @Transactional
+
     public void delete(Long id, String changeId) {
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
+                BizEvent.delete(id, mongoTemplate);
+                AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
+                appCreateChangeRecordCommand.setChangeId(changeId);
+                appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
+            }
+        });
         cleanUpCache(Collections.singleton(id));
-        BizEvent.delete(id, repository);
-        AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
-        appCreateChangeRecordCommand.setChangeId(changeId);
-        appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
     }
 
     private String getQueryCacheKey(CacheCriteria cacheCriteria) {

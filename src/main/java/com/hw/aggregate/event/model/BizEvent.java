@@ -1,17 +1,21 @@
 package com.hw.aggregate.event.model;
 
-import com.hw.aggregate.event.BizEventRepository;
+import com.hw.aggregate.event.command.AdminUpdateBizEventCommand;
 import com.hw.shared.Auditable;
 import com.hw.shared.EntityNotExistException;
 import com.hw.shared.UserThreadLocal;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
+import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 
 import java.io.Serializable;
 import java.util.Date;
-import java.util.Optional;
+import java.util.List;
 
 @Data
 @Document
@@ -28,47 +32,38 @@ public class BizEvent extends Auditable implements Serializable {
         this.blob = blob;
     }
 
-    public static void create(Long id, String blob, BizEventRepository repository) {
+    public static void create(Long id, String blob, MongoTemplate mongoTemplate) {
         BizEvent bizEvent = new BizEvent(id, blob);
         bizEvent.setCreatedAt(new Date());
         bizEvent.setCreatedBy(UserThreadLocal.get());
-        repository.save(bizEvent);
+        mongoTemplate.insert(bizEvent);
     }
 
-    public static BizEvent readById(Long id, BizEventRepository repository) {
-        Optional<BizEvent> byId = repository.findById(id);
-        if (byId.isEmpty()) {
+    public static BizEvent readById(Long id, MongoTemplate mongoTemplate) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("id").is(id.toString()).and(ENTITY_DELETED).is(false));
+        List<BizEvent> bizEvents = mongoTemplate.find(query, BizEvent.class);
+        if (bizEvents.isEmpty()) {
             throw new EntityNotExistException();
-        } else {
-            if (Boolean.TRUE.equals(byId.get().getDeleted())) {
-                throw new EntityNotExistException();
-            } else {
-                return byId.get();
-            }
         }
+        return bizEvents.get(0);
     }
 
-    public static void update(Long id, String blob, BizEventRepository repository) {
-        BizEvent bizEvent = readById(id, repository);
-        bizEvent.setBlob(blob);
+    public static void update(Long id, AdminUpdateBizEventCommand blob, MongoTemplate mongoTemplate) {
+        BizEvent bizEvent = readById(id, mongoTemplate);
+        bizEvent.setBlob(blob.getEvents());
         bizEvent.setModifiedAt(new Date());
         bizEvent.setModifiedBy(UserThreadLocal.get());
-        repository.save(bizEvent);
+        mongoTemplate.save(bizEvent);
     }
 
-    public static void delete(Long id, BizEventRepository repository) {
-        Optional<BizEvent> byId = repository.findById(id);
-        if (byId.isEmpty()) {
-            throw new EntityNotExistException();
-        } else {
-            if (Boolean.TRUE.equals(byId.get().getDeleted())) {
-            } else {
-                BizEvent bizEvent = byId.get();
-                bizEvent.setDeleted(true);
-                bizEvent.setDeletedAt(new Date());
-                bizEvent.setModifiedBy(UserThreadLocal.get());
-                repository.save(bizEvent);
-            }
-        }
+    public static void delete(Long id, MongoTemplate mongoTemplate) {
+        Query query = new Query();
+        query.addCriteria(Criteria.where("id").is(id.toString()).and(ENTITY_DELETED).is(false));
+        Update update = new Update();
+        update.set(ENTITY_DELETED, true);
+        update.set(ENTITY_DELETED_BY, UserThreadLocal.get());
+        update.set(ENTITY_DELETED_AT, new Date());
+        mongoTemplate.findAndModify(query, update, BizEvent.class);
     }
 }
