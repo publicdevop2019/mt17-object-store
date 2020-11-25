@@ -1,6 +1,7 @@
 package com.hw.aggregate.event;
 
 import com.hw.aggregate.event.command.AdminUpdateBizEventCommand;
+import com.hw.aggregate.event.representation.AdminBizEventRep;
 import com.hw.shared.ServiceUtility;
 import com.hw.shared.UserThreadLocal;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,25 +17,25 @@ public class BizEventController {
     AdminBizEventApplicationService applicationService;
 
     @PostMapping("{id}")
-    public ResponseEntity<Void> create(@RequestHeader("authorization") String authorization, @RequestBody String blob, @PathVariable(name = "id") Long id, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
+    public ResponseEntity<Void> create(@RequestHeader("authorization") String authorization, @RequestBody Object[] data, @PathVariable(name = "id") Long id, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
-        applicationService.create(blob, id,changeId);
+        applicationService.create(data, id,changeId);
         return ResponseEntity.ok().header("Location", id.toString()).build();
     }
 
     @GetMapping("{id}")
-    public ResponseEntity<String> read(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id) {
+    public ResponseEntity<AdminBizEventRep> read(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
-        return ResponseEntity.ok(applicationService.readById(id).getBlob());
+        return ResponseEntity.ok(applicationService.readById(id));
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<?> update(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestBody AdminUpdateBizEventCommand blob, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
+    public ResponseEntity<?> update(@RequestHeader("authorization") String authorization, @PathVariable(value = "id") Long id, @RequestBody AdminUpdateBizEventCommand command, @RequestHeader(HTTP_HEADER_CHANGE_ID) String changeId) {
         UserThreadLocal.unset();
         UserThreadLocal.set(ServiceUtility.getUserId(authorization));
-        applicationService.update(id, blob,changeId);
+        applicationService.update(id, command,changeId);
         return ResponseEntity.ok().build();
     }
 

@@ -3,8 +3,11 @@ package com.hw.aggregate.event.model;
 import com.hw.aggregate.event.command.AdminUpdateBizEventCommand;
 import com.hw.shared.Auditable;
 import com.hw.shared.EntityNotExistException;
+import com.hw.shared.EntityOutdatedException;
 import com.hw.shared.UserThreadLocal;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -19,20 +22,22 @@ import java.util.List;
 
 @Data
 @Document
+@NoArgsConstructor
+@AllArgsConstructor
 public class BizEvent extends Auditable implements Serializable {
     @Id
     private Long id;
-    private String blob;
+    private Object[] events;
     @Version
     private Integer version;
 
 
-    public BizEvent(Long id, String blob) {
+    public BizEvent(Long id, Object[] blob) {
         this.id = id;
-        this.blob = blob;
+        this.events = blob;
     }
 
-    public static void create(Long id, String blob, MongoTemplate mongoTemplate) {
+    public static void create(Long id, Object[] blob, MongoTemplate mongoTemplate) {
         BizEvent bizEvent = new BizEvent(id, blob);
         bizEvent.setCreatedAt(new Date());
         bizEvent.setCreatedBy(UserThreadLocal.get());
@@ -53,14 +58,17 @@ public class BizEvent extends Auditable implements Serializable {
         Criteria criteria = new Criteria();
         criteria.orOperator(Criteria.where(ENTITY_DELETED).exists(false), Criteria.where(ENTITY_DELETED).is(false));
         query.addCriteria(Criteria.where("id").is(id)
-                        .andOperator(criteria)
+                .andOperator(criteria)
         );
         return query;
     }
 
-    public static void update(Long id, AdminUpdateBizEventCommand blob, MongoTemplate mongoTemplate) {
+    public static void update(Long id, AdminUpdateBizEventCommand command, MongoTemplate mongoTemplate) {
         BizEvent bizEvent = readById(id, mongoTemplate);
-        bizEvent.setBlob(blob.getEvents());
+        if (!command.getVersion().equals(bizEvent.getVersion())) {
+            throw new EntityOutdatedException();
+        }
+        bizEvent.setEvents(command.getEvents());
         bizEvent.setModifiedAt(new Date());
         bizEvent.setModifiedBy(UserThreadLocal.get());
         mongoTemplate.save(bizEvent);

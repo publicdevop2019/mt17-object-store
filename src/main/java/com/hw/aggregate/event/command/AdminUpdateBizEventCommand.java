@@ -5,5 +5,5 @@ import lombok.Data;
 @Data
 public class AdminUpdateBizEventCommand {
     private Integer version;
-    private String events;
+    private Object[] events;
 }

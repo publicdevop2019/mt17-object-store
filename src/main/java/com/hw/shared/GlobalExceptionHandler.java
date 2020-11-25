@@ -20,7 +20,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             IllegalArgumentException.class,
             JwtTokenExtractException.class,
             MaxPageSizeExceedException.class,
-            EntityNotExistException.class
+            EntityNotExistException.class,
+            EntityOutdatedException.class
     })
     protected ResponseEntity<Object> handle400Exception(RuntimeException ex, WebRequest request) {
         ErrorMessage errorMessage = new ErrorMessage(ex);

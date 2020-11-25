@@ -39,7 +39,7 @@ public class AdminBizEventApplicationService {
     @Autowired
     TransactionTemplate transactionTemplate;
 
-    public void create(String blob, Long id, String changeId) {
+    public void create(Object[] blob, Long id, String changeId) {
         transactionTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
@@ -75,11 +75,11 @@ public class AdminBizEventApplicationService {
         return new AdminBizEventRep(bizEvent);
     }
 
-    public void update(Long id, AdminUpdateBizEventCommand blob, String changeId) {
+    public void update(Long id, AdminUpdateBizEventCommand command, String changeId) {
         transactionTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus transactionStatus) {
-                BizEvent.update(id, blob,mongoTemplate);
+                BizEvent.update(id, command,mongoTemplate);
                 AppCreateChangeRecordCommand appCreateChangeRecordCommand = new AppCreateChangeRecordCommand();
                 appCreateChangeRecordCommand.setChangeId(changeId);
                 appChangeRecordApplicationService.create(appCreateChangeRecordCommand);
