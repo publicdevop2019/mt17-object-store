@@ -40,13 +40,22 @@ public class BizEvent extends Auditable implements Serializable {
     }
 
     public static BizEvent readById(Long id, MongoTemplate mongoTemplate) {
-        Query query = new Query();
-        query.addCriteria(Criteria.where("id").is(id.toString()).and(ENTITY_DELETED).is(false));
+        Query query = getQuery(id);
         List<BizEvent> bizEvents = mongoTemplate.find(query, BizEvent.class);
         if (bizEvents.isEmpty()) {
             throw new EntityNotExistException();
         }
         return bizEvents.get(0);
+    }
+
+    private static Query getQuery(Long id) {
+        Query query = new Query();
+        Criteria criteria = new Criteria();
+        criteria.orOperator(Criteria.where(ENTITY_DELETED).exists(false), Criteria.where(ENTITY_DELETED).is(false));
+        query.addCriteria(Criteria.where("id").is(id)
+                        .andOperator(criteria)
+        );
+        return query;
     }
 
     public static void update(Long id, AdminUpdateBizEventCommand blob, MongoTemplate mongoTemplate) {
@@ -58,8 +67,7 @@ public class BizEvent extends Auditable implements Serializable {
     }
 
     public static void delete(Long id, MongoTemplate mongoTemplate) {
-        Query query = new Query();
-        query.addCriteria(Criteria.where("id").is(id.toString()).and(ENTITY_DELETED).is(false));
+        Query query = getQuery(id);
         Update update = new Update();
         update.set(ENTITY_DELETED, true);
         update.set(ENTITY_DELETED_BY, UserThreadLocal.get());
